@@ -1,0 +1,3 @@
+include:
+- ./docker/qdrant/compose.yaml
+- ./docker/redis/compose.yaml
