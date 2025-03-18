@@ -2,3 +2,4 @@
 .venv/
 src/rag/__pycache__
 src/rag/.env
+qdrant_data.tar.gz

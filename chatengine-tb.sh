@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-python ./src/rag/retrieve-chatengine-Tiabete.py
+python ./src/rag/retrieve_chatengine_Tiabete.py
