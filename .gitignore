@@ -3,3 +3,4 @@
 src/rag/__pycache__
 src/rag/.env
 qdrant_data.tar.gz
+qdrant_export.json

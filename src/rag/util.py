@@ -21,13 +21,15 @@ class QdrantUtil:
     @staticmethod
     def get_client(
         url: Optional[str] = None,
+        api_key: Optional[str] = None,  # <-- Adicionado
         timeout: Optional[int] = None
     ) -> QdrantClient:
         qdrant_client = None
         try:
-            # initialize Qdrant client
+            # Inicializa o cliente Qdrant com suporte para API key
             qdrant_client = QdrantClient(
                 url=url,
+                api_key=api_key,  # <-- Adicionado
                 timeout=timeout
             )
         except Exception:
