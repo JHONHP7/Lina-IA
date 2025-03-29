@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5001
 
 # Comando para rodar a aplicação
-CMD ["python", "server.py"]
+CMD ["python", "src/rag/server.py"]
