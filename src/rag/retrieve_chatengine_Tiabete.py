@@ -27,7 +27,8 @@ def get_chat_engine() -> BaseChatEngine:
     Settings.llm = LLM(config).get_llm(LLMProvider.OPENAPI)
 
     qdrant_client = QdrantUtil.get_client(
-        url=config.QDRANT_URL,
+        url=config.QDRANT_HOST,
+        api_key=config.QDRANT_API_KEY ,
         timeout=config.REQUEST_TIMEOUT
     )
     # initialize vector store

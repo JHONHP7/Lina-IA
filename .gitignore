@@ -1,5 +1,36 @@
-.ruff_cache
+# Ambiente virtual do Python
 .venv/
-src/rag/__pycache__
+*.pyc
+*.pyo
+__pycache__/
+*.log
+
+# Arquivos temporários e gerados
+*.tar.gz
+*.zip
+*.tar
+*.sqlite
+*.db
+*.swp
+*.swo
+
+# Configurações e credenciais
 src/rag/.env
+.env
+
+# Dados e caches
 qdrant_data.tar.gz
+qdrant_export.json
+.ruff_cache
+cache/
+data/
+docker-compose.yaml
+assets/
+docker/
+
+# Arquivos de execução e shell scripts gerados
+*.sh~
+*.bak
+
+# Docker
+docker-compose.override.yaml

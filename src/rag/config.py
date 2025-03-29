@@ -21,6 +21,8 @@ class RAGConfig:
     QDRANT_URL = os.environ.get("QDRANT_URL")
     QDRANT_COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION_NAME")
     QDRANT_COLLECTION_TB = os.environ.get("QDRANT_COLLECTION_TB")
+    QDRANT_HOST = os.environ.get("QDRANT_HOST")
+    QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
     REDIS_URL=os.environ.get("REDIS_URL")
     REDIS_COLLECTION_NAME=os.environ.get("REDIS_COLLECTION_NAME")
     REQUEST_TIMEOUT = 240
