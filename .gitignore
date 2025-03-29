@@ -31,6 +31,6 @@ docker/
 # Arquivos de execução e shell scripts gerados
 *.sh~
 *.bak
-
+Makefile
 # Docker
 docker-compose.override.yaml

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from retrieve_chatengine_Tiabete import get_chat_engine 
+import os
 
 app = Flask(__name__)
 chat_engine = get_chat_engine()
@@ -23,4 +24,5 @@ def chat():
     return jsonify({"response": final_response})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    port = int(os.getenv("PORT", 5001))  # Render fornece a variável PORT
+    app.run(host="0.0.0.0", port=port, debug=True)
