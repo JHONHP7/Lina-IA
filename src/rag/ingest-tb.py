@@ -52,7 +52,8 @@ def run_pipeline(
 ) -> Sequence[BaseNode]:
 
     qdrant_client = QdrantUtil.get_client(
-        url=config.QDRANT_URL,
+        url=config.QDRANT_HOST,
+        api_key=config.QDRANT_API_KEY ,
         timeout=config.REQUEST_TIMEOUT
     )
 
@@ -98,7 +99,7 @@ def run_pipeline(
 def main():
     logger.info("Starting ingestion process")
     logger.info(f"Using SentenceSplitter (chunk_size={config.CHUNK_SIZE}, chunk_overlap={config.CHUNK_OVERLAP})")
-    logger.info(f"Using LLM '{config.OLLAMA_MODEL}'")
+    logger.info(f"Using LLM '{config.OPEN_API_MODEL}'")
     logger.info(f"Using embedding model '{config.EMBEDDING_MODEL}'")
 
     try:
