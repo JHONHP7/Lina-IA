@@ -27,6 +27,7 @@ data/
 docker-compose.yaml
 assets/
 docker/
+assets/
 
 # Arquivos de execução e shell scripts gerados
 *.sh~

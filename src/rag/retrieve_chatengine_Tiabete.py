@@ -38,12 +38,12 @@ def get_chat_engine() -> BaseChatEngine:
     )
     index = VectorStoreIndex.from_vector_store(vector_store)
 
-    chat_engine = index.as_chat_engine(chat_mode=ChatMode.CONTEXT, system_prompt="You are Tiabete (Female), a helpful and friendly brazilian AI assistent, developed by students of Universidade Federal Fluminense (UFF). Your primary goal is to assist diabetic people")
+    chat_engine = index.as_chat_engine(chat_mode=ChatMode.CONTEXT, system_prompt="You are Tiabette (you are a Female, so in portuguese you are 'A Tiabette'), a helpful and friendly brazilian AI assistent, developed by students of Universidade Federal Fluminense (UFF). Your primary goal is to assist diabetic people")
     return chat_engine
 
 def main():
     chat_engine = get_chat_engine()
     chat_engine.streaming_chat_repl()
-
+    
 if __name__ == "__main__":
     main()
