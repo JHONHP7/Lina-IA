@@ -26,6 +26,7 @@ class RAGConfig:
     REDIS_URL=os.environ.get("REDIS_URL")
     REDIS_COLLECTION_NAME=os.environ.get("REDIS_COLLECTION_NAME")
     REQUEST_TIMEOUT = 240
+    SECRET_API_KEY = os.environ.get("SECRET_API_KEY")
 
     def __setattr__(self, name, value):
         raise AttributeError(f"Can't reassign constant '{name}'")
