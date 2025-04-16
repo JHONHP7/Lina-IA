@@ -12,6 +12,7 @@ from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine.types import BaseChatEngine, ChatMode
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.storage.chat_store.redis import RedisChatStore
+from custom_redis_chat_store import CustomRedisChatStore
 
 # Configura logging
 logging.basicConfig(
@@ -32,8 +33,14 @@ def get_chat_engine(user_id: str) -> BaseChatEngine:
     Settings.llm = LLM(config).get_llm(LLMProvider.OPENAPI)
 
     # Inicializa chat store com Redis
-    redis_client = redis.Redis(host="localhost", port=6379)
-    chat_store = RedisChatStore(redis_client=redis_client)
+    redis_client = redis.Redis(
+    host=config.REDIS_HOST,
+    port=config.REDIS_PORT,
+    username=config.REDIS_USERNAME,
+    password=config.REDIS_PASSWORD,
+    decode_responses=False,
+    )
+    chat_store = CustomRedisChatStore(redis_client=redis_client)
     memory = ChatMemoryBuffer.from_defaults(chat_store=chat_store, chat_store_key=user_id)
 
     # Conecta ao Qdrant

@@ -25,6 +25,10 @@ class RAGConfig:
     QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
     REDIS_URL=os.environ.get("REDIS_URL")
     REDIS_COLLECTION_NAME=os.environ.get("REDIS_COLLECTION_NAME")
+    REDIS_HOST = os.environ.get("REDIS_HOST")
+    REDIS_PORT = os.environ.get("REDIS_PORT")
+    REDIS_USERNAME = os.environ.get("REDIS_USERNAME")
+    REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD")
     REQUEST_TIMEOUT = 240
     SECRET_API_KEY = os.environ.get("SECRET_API_KEY")
 
