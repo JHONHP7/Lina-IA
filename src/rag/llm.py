@@ -47,11 +47,11 @@ class LLM:
             # Reduces the probability of generating nonsense. A higher value
             # (e.g. 100) will give more diverse answers, while a lower value
             # (e.g. 10) will be more conservative.
-            top_k=10,
+            top_k=None,
             # Works together with top-k. A higher value (e.g., 0.95) will lead
             # to more diverse text, while a lower value (e.g., 0.5) will generate
             # more focused and conservative text.
-            top_p=0.2,
+            top_p=0.7,
             request_timeout=self._config.REQUEST_TIMEOUT
         )
 
