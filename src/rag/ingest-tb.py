@@ -10,14 +10,12 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.extractors import KeywordExtractor
 from llama_index.core.ingestion import (
     DocstoreStrategy,
-    IngestionCache,
     IngestionPipeline,
 )
-from llama_index.core.node_parser.text import SentenceSplitter
+from llama_index.core.node_parser import SentenceWindowNodeParser  
 from llama_index.core.schema import BaseNode, Document
-from llama_index.storage.docstore.redis import RedisDocumentStore
 from llm import LLM, LLMProvider
-from util import QdrantUtil, RedisUtil
+from util import QdrantUtil
 
 logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -29,21 +27,25 @@ logger = logging.getLogger(__name__)
 
 config = RAGConfig
 
+# Adiciona metadados ao carregar os documentos
 def get_documents(
     input_dir: Optional[Union[Path, str]] = None
 ) -> List[Document]:
-    documents = None
-
     if not os.path.exists(input_dir):
         raise FileNotFoundError(f"Directory '{input_dir}' doesn't exist")
 
-    # read in PDF documents from filesystem using SimpleDirectoryReader
     logger.info(f"Load documents from '{input_dir}'")
+
+    def set_metadata(filename):
+        return {"file_name": filename, "source": "user_pdfs"}
+
     documents = SimpleDirectoryReader(
         input_dir=input_dir,
         recursive=True,
-        required_exts=[".pdf"]
+        required_exts=[".pdf"],
+        file_metadata=set_metadata
     ).load_data()
+
     logger.info(f"Found {len(documents)} page(s)")
     return documents
 
@@ -53,40 +55,26 @@ def run_pipeline(
 
     qdrant_client = QdrantUtil.get_client(
         url=config.QDRANT_HOST,
-        api_key=config.QDRANT_API_KEY ,
+        api_key=config.QDRANT_API_KEY,
         timeout=config.REQUEST_TIMEOUT
-    )
-
-    redis_kvstore = RedisUtil.get_kvstore(
-        client=RedisUtil.get_client(url=config.REDIS_URL)
     )
 
     llm = LLM(config).get_llm(LLMProvider.OPENAPI)
 
+    # Criação do node parser com relacionamentos prev/next
+    node_parser = SentenceWindowNodeParser.from_defaults(
+        window_size=3,
+        include_prev_next_rel=True,
+        window_metadata_key="ContextWindow",
+        original_text_metadata_key="node_text"
+    )
+
     pipeline = IngestionPipeline(
         transformations=[
-            SentenceSplitter(
-                chunk_size=config.CHUNK_SIZE,
-                chunk_overlap=config.CHUNK_OVERLAP
-            ),
-            KeywordExtractor(
-                llm,
-                show_progress=False
-            ),
-            # SummaryExtractor(
-            #     llm,
-            #     show_progress=False
-            # ),
+            node_parser,
+            KeywordExtractor(llm, show_progress=False),
             Embedding(config).get_embedding_model(EmbeddingProvider.OPENAPI)
         ],
-        cache=IngestionCache(
-            cache=redis_kvstore,
-            collection=config.REDIS_COLLECTION_NAME
-        ),
-        docstore=RedisDocumentStore(
-            redis_kvstore=redis_kvstore,
-            namespace=config.REDIS_COLLECTION_NAME
-        ),
         docstore_strategy=DocstoreStrategy.UPSERTS,
         vector_store=QdrantUtil.get_vectorstore(
             client=qdrant_client,
@@ -103,15 +91,26 @@ def main():
     logger.info(f"Using embedding model '{config.EMBEDDING_MODEL}'")
 
     try:
-        response = httpx.get("http://localhost:6333/collections")
-        print(response.status_code, response.json())
+        response = httpx.get(
+            f"{config.QDRANT_HOST}/collections",
+            headers={"api-key": config.QDRANT_API_KEY}
+        )
+        response.raise_for_status()
+        logger.info(f"Qdrant status: {response.status_code} - {response.json()}")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Erro HTTP ao conectar ao Qdrant: {e.response.status_code} - {e.response.text}")
     except Exception as e:
-        print("Erro ao conectar ao Qdrant:", e)
+        logger.error(f"Erro inesperado ao conectar ao Qdrant: {e}")
+
 
     documents = get_documents(input_dir=os.path.join(os.getcwd(), config.TB_DOCS_PATH))
     nodes = run_pipeline(documents=documents)
 
     logger.info(f"Ingested {len(nodes)} node(s)")
+    for node in nodes:
+        logger.info(f"Node metadata: {node.metadata}")
+
+    logger.info("Ingestion process completed")
     logger.info("Ingestion process completed")
 
 if __name__ == "__main__":
