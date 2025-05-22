@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from rag.retrieve_chatengine_Lina import get_chat_engine 
+from retrieve_chatengine_Lina import get_chat_engine 
 from config import RAGConfig
 import json
 import os
