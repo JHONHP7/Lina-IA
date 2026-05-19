@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Union
 import httpx
 
-from config import RAGConfig
-from embeddings import Embedding, EmbeddingProvider
+from core.config import RAGConfig
+from core.embeddings import Embedding
 from llama_index.core import SimpleDirectoryReader
+from llama_index.readers.file import PyMuPDFReader
 from llama_index.core.extractors import KeywordExtractor
 from llama_index.core.ingestion import (
     DocstoreStrategy,
@@ -14,8 +15,10 @@ from llama_index.core.ingestion import (
 )
 from llama_index.core.node_parser import SentenceWindowNodeParser  
 from llama_index.core.schema import BaseNode, Document
-from llm import LLM, LLMProvider
-from util import QdrantUtil
+from core.llm import LLM
+from core.util import QdrantUtil
+
+from provenance.tracker import track_execution
 
 logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -39,27 +42,32 @@ def get_documents(
     def set_metadata(filename):
         return {"file_name": filename, "source": "user_pdfs"}
 
+    parser = PyMuPDFReader()
+    file_extractor = {".pdf": parser}
+
     documents = SimpleDirectoryReader(
         input_dir=input_dir,
         recursive=True,
         required_exts=[".pdf"],
-        file_metadata=set_metadata
+        file_metadata=set_metadata,
+        file_extractor=file_extractor
     ).load_data()
 
     logger.info(f"Found {len(documents)} page(s)")
     return documents
 
+@track_execution
 def run_pipeline(
     documents: List[Document]
 ) -> Sequence[BaseNode]:
 
     qdrant_client = QdrantUtil.get_client(
-        url=config.QDRANT_HOST,
+        url=config.QDRANT_URL,
         api_key=config.QDRANT_API_KEY,
         timeout=config.REQUEST_TIMEOUT
     )
 
-    llm = LLM(config).get_llm(LLMProvider.OPENAPI)
+    llm = LLM(config).get_llm()
 
     # Criação do node parser com relacionamentos prev/next
     node_parser = SentenceWindowNodeParser.from_defaults(
@@ -72,8 +80,8 @@ def run_pipeline(
     pipeline = IngestionPipeline(
         transformations=[
             node_parser,
-            KeywordExtractor(llm, show_progress=False),
-            Embedding(config).get_embedding_model(EmbeddingProvider.OPENAPI)
+            # KeywordExtractor(llm, show_progress=False), # Pausado temporariamente para otimização
+            Embedding(config).get_embedding_model()
         ],
         docstore_strategy=DocstoreStrategy.UPSERTS,
         vector_store=QdrantUtil.get_vectorstore(
@@ -86,13 +94,13 @@ def run_pipeline(
 
 def main():
     logger.info("Starting ingestion process")
-    logger.info(f"Using SentenceSplitter (chunk_size={config.CHUNK_SIZE}, chunk_overlap={config.CHUNK_OVERLAP})")
+    logger.info("Using SentenceWindowNodeParser (window_size=3)")
     logger.info(f"Using LLM '{config.OPEN_API_MODEL}'")
     logger.info(f"Using embedding model '{config.EMBEDDING_MODEL}'")
 
     try:
         response = httpx.get(
-            f"{config.QDRANT_HOST}/collections",
+            f"{config.QDRANT_URL}/collections",
             headers={"api-key": config.QDRANT_API_KEY}
         )
         response.raise_for_status()
@@ -110,7 +118,6 @@ def main():
     for node in nodes:
         logger.info(f"Node metadata: {node.metadata}")
 
-    logger.info("Ingestion process completed")
     logger.info("Ingestion process completed")
 
 if __name__ == "__main__":

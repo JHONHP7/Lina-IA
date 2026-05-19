@@ -1,4 +1,5 @@
 # Ambiente virtual do Python
+venv/
 .venv/
 *.pyc
 *.pyo
@@ -24,7 +25,6 @@ qdrant_export.json
 .ruff_cache
 cache/
 data/
-docker-compose.yaml
 assets/
 docker/
 assets/
@@ -33,5 +33,3 @@ assets/
 *.sh~
 *.bak
 Makefile
-# Docker
-docker-compose.override.yaml

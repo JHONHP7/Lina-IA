@@ -1,18 +1,19 @@
 import logging
 import sys
 
-from config import RAGConfig
+from core.config import RAGConfig
 from dotenv import load_dotenv
-from embeddings import Embedding, EmbeddingProvider
+from core.embeddings import Embedding
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.core.base.response.schema import RESPONSE_TYPE
 from llama_index.core.indices.postprocessor import SimilarityPostprocessor
+from llama_index.core.postprocessor import MetadataReplacementPostProcessor
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.response.pprint_utils import pprint_response
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llm import LLM, LLMProvider
-from util import QdrantUtil
+from core.llm import LLM
+from core.util import QdrantUtil
 
 logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -28,8 +29,8 @@ config = RAGConfig
 
 def query(query_text: str) -> RESPONSE_TYPE:
 
-    Settings.embed_model = Embedding(config).get_embedding_model(EmbeddingProvider.OLLAMA)
-    Settings.llm = LLM(config).get_llm(LLMProvider.OLLAMA)
+    Settings.embed_model = Embedding(config).get_embedding_model()
+    Settings.llm = LLM(config).get_llm()
 
     qdrant_client = QdrantUtil.get_client(
         url=config.QDRANT_URL,
@@ -50,10 +51,14 @@ def query(query_text: str) -> RESPONSE_TYPE:
     postprocessor = SimilarityPostprocessor(
         similarity_cutoff=0.20
     )
+    
+    metadata_replacement_postprocessor = MetadataReplacementPostProcessor(
+        target_metadata_key="ContextWindow"
+    )
 
     query_engine = RetrieverQueryEngine(
         retriever=retriever,
-        node_postprocessors=[postprocessor]
+        node_postprocessors=[postprocessor, metadata_replacement_postprocessor]
     )
     result = query_engine.query(query_text)
     return result

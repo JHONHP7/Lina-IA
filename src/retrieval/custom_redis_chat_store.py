@@ -12,11 +12,10 @@ class CustomRedisChatStore(RedisChatStore):
         json_str = json.dumps([msg.dict() for msg in messages], ensure_ascii=False)
         return json_str.encode("utf-8")  # <- volta a ser bytes
 
-def _deserialize(self, data: bytes) -> List[BaseNode]:
-    try:
-        raw_list = json.loads(data.decode("utf-8"))
-        return [BaseNode.from_dict(item) for item in raw_list]
-    except Exception as e:
-        print("Erro ao desserializar mensagens:", e)
-        return []
-
+    def _deserialize(self, data: bytes) -> List[BaseNode]:
+        try:
+            raw_list = json.loads(data.decode("utf-8"))
+            return [BaseNode.from_dict(item) for item in raw_list]
+        except Exception as e:
+            print("Erro ao desserializar mensagens:", e)
+            return []
