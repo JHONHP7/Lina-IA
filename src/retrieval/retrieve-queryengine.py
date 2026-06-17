@@ -39,7 +39,7 @@ def query(query_text: str) -> RESPONSE_TYPE:
     # initialize vector store
     vector_store = QdrantVectorStore(
         client=qdrant_client,
-        collection_name=config.QDRANT_COLLECTION_NAME
+        collection_name=config.QDRANT_COLLECTION_TB
     )
     index = VectorStoreIndex.from_vector_store(vector_store)
 
