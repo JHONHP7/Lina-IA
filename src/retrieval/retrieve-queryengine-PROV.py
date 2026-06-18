@@ -3,6 +3,7 @@ import sys
 
 from core.config import RAGConfig
 from dotenv import load_dotenv
+from provenance.tracker import track_provenance_experiment
 from core.embeddings import Embedding
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.core.base.response.schema import RESPONSE_TYPE
@@ -22,11 +23,19 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# load enviromental variables from .env file
 load_dotenv()
 
 config = RAGConfig
 
+# Aplicação para rastrear os metadados e gerar o JSON
+@track_provenance_experiment(
+    experiment_name="Validacao_RAG_CLI",
+    prospective_params={
+        "similarity_top_k": 5,
+        "similarity_cutoff": 0.20,
+        "qdrant_collection": config.QDRANT_COLLECTION_TB
+    }
+)
 def query(query_text: str) -> RESPONSE_TYPE:
 
     Settings.embed_model = Embedding(config).get_embedding_model()

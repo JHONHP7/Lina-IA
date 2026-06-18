@@ -33,3 +33,8 @@ assets/
 *.sh~
 *.bak
 Makefile
+
+# Pastas de Proveniência e MLOps
+.noworkflow/
+mlruns/
+data/provenance_logs/
