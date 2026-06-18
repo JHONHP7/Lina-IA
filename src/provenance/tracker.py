@@ -77,30 +77,38 @@ class LINAProvenanceHandler(BaseCallbackHandler):
             }
             self.trace_data["retrieval_events"].append(retrieval_info)
             
-            # Se o noWorkflow estiver rodando ativamente, injeta uma tag de arquivo de acesso
-            if NOWORKFLOW_AVAILABLE and collector.Collector.definitions:
-                for node in nodes:
-                    fname = node.node.metadata.get("file_name", "unknown_chunk")
-                    # Registra de forma artificial no fluxo do noWorkflow que este nó de documento foi lido
-                    logger.debug(f"[noWorkflow Tag] Document chunk read: {fname}")
-
         elif event_type == CBEventType.LLM:
             response = payload.get("response")
+            
+            # Extração segura de tokens:
+            usage = {}
+            if response:
+                # O LlamaIndex mais novo muitas vezes salva em additional_kwargs
+                if hasattr(response, "additional_kwargs") and "token_counts" in response.additional_kwargs:
+                    usage = response.additional_kwargs["token_counts"]
+                # Caso a OpenAI raw esteja disponível:
+                elif hasattr(response, "raw") and hasattr(response.raw, "usage"):
+                    raw_usage = response.raw.usage
+                    # Converte objeto Pydantic para dicionário de forma segura
+                    usage = raw_usage.model_dump() if hasattr(raw_usage, "model_dump") else getattr(raw_usage, "__dict__", {})
+
             llm_info = {
                 "event_id": event_id,
                 "timestamp": datetime.now().isoformat(),
                 "output_text": str(response),
-                "token_usage": getattr(response, "raw", {}).get("usage", {}) if response else {}
+                "token_usage": usage
             }
             self.trace_data["llm_events"].append(llm_info)
 
-        elif event_type == CBEventType.QUERY:
-            self.trace_data["timestamps"]["query_end"] = time.time()
-
-    def start_trace(self, trace_id: Optional[str] = None) -> None:
+    def start_trace(self, trace_id: Optional[str] = None, **kwargs: Any) -> None:
         self.reset_trace()
 
-    def end_trace(self, trace_id: Optional[str] = None) -> None:
+    def end_trace(
+        self,
+        trace_id: Optional[str] = None,
+        trace_map: Optional[Dict[str, List[str]]] = None,
+        **kwargs: Any
+    ) -> None:
         pass
 
     def get_provenance_data(self) -> Dict[str, Any]:
