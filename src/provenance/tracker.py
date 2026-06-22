@@ -20,11 +20,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class LINAProvenanceHandler(BaseCallbackHandler):
-    """
-    Handler de proveniência retrospectiva para LlamaIndex.
-    Captura eventos de Retrieval e LLM Generation, medindo o tempo de cada etapa.
-    """
-
     def __init__(self) -> None:
         super().__init__(event_starts_to_ignore=[], event_ends_to_ignore=[])
         self.reset_trace()
@@ -34,7 +29,7 @@ class LINAProvenanceHandler(BaseCallbackHandler):
             "retrieval_events": [],
             "llm_events": [],
             "timestamps": {},
-            "stage_timestamps": {}, # Armazena o fim exato de cada etapa
+            "stage_timestamps": {}, 
             "latency_seconds": 0.0,
         }
 
@@ -67,7 +62,7 @@ class LINAProvenanceHandler(BaseCallbackHandler):
                 self.trace_data["latency_seconds"] = ts["query_end"] - ts["query_start"]
 
         elif event_type == CBEventType.RETRIEVE:
-            self.trace_data["stage_timestamps"]["retrieval_end"] = time.time() # Marca fim da busca vetorial
+            self.trace_data["stage_timestamps"]["retrieval_end"] = time.time() 
             nodes = payload.get("nodes", [])
             self.trace_data["retrieval_events"].append({
                 "event_id": event_id,
@@ -86,7 +81,7 @@ class LINAProvenanceHandler(BaseCallbackHandler):
             })
 
         elif event_type == CBEventType.LLM:
-            self.trace_data["stage_timestamps"]["llm_end"] = time.time() # Marca o fim da geração do LLM
+            self.trace_data["stage_timestamps"]["llm_end"] = time.time()
             response = payload.get("response")
             prompt_messages = payload.get("messages", [])
             usage = self._extract_token_usage(response)
@@ -100,9 +95,7 @@ class LINAProvenanceHandler(BaseCallbackHandler):
             })
 
     def _extract_token_usage(self, response) -> Dict[str, int]:
-        """Extrai uso de tokens de forma robusta, tentando múltiplos caminhos."""
-        if response is None:
-            return {}
+        if response is None: return {}
         if hasattr(response, "additional_kwargs"):
             token_counts = response.additional_kwargs.get("token_counts")
             if token_counts: return token_counts
@@ -115,22 +108,18 @@ class LINAProvenanceHandler(BaseCallbackHandler):
     def start_trace(self, trace_id: Optional[str] = None, **kwargs: Any) -> None:
         self.reset_trace()
 
-    def end_trace(self, trace_id: Optional[str] = None, trace_map: Optional[Dict[str, List[str]]] = None, **kwargs: Any) -> None:
-        pass
+    def end_trace(self, trace_id: Optional[str] = None, trace_map: Optional[Dict[str, List[str]]] = None, **kwargs: Any) -> None: pass
 
     def get_provenance_data(self) -> Dict[str, Any]:
         return self.trace_data
-
 
 def track_provenance_experiment(experiment_name: str, prospective_params: Dict[str, Any]):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             from llama_index.core import Settings
-
             handler = LINAProvenanceHandler()
             Settings.callback_manager.add_handler(handler)
-
             mlflow.set_experiment(experiment_name)
 
             noworkflow_trial_id = None
@@ -141,7 +130,6 @@ def track_provenance_experiment(experiment_name: str, prospective_params: Dict[s
                     noworkflow_trial_id = os.environ.get("NOW_TRIAL_ID")
 
             with mlflow.start_run() as ml_run:
-                # Comeco da proveniência prospectiva
                 if prospective_params:
                     mlflow.log_params(prospective_params)
 
@@ -149,7 +137,6 @@ def track_provenance_experiment(experiment_name: str, prospective_params: Dict[s
                 mlflow.set_tag("function_name", func.__name__)
                 mlflow.set_tag("experiment_name", experiment_name)
                 
-                # Hash da pergunta para conseguirmos separar a análise estatística depois
                 query_str = args[0] if args else ""
                 query_hash = hashlib.md5(str(query_str).encode()).hexdigest()[:8]
                 mlflow.set_tag("user_query_hash", query_hash)
@@ -172,12 +159,10 @@ def track_provenance_experiment(experiment_name: str, prospective_params: Dict[s
                     wall_time = time.perf_counter() - start_clock
                     retrospect_data = handler.get_provenance_data()
 
-                    # Começo da Proveniência Retrospectiva: métricas totais
                     latency = retrospect_data.get("latency_seconds", 0.0)
                     mlflow.log_metric("latency_seconds", latency)
                     mlflow.log_metric("wall_time_seconds", wall_time)
                     
-                    # Latência por etapa (Retrieval vs LLM)
                     st = retrospect_data.get("stage_timestamps", {})
                     q_start = retrospect_data["timestamps"].get("query_start", 0)
                     retrieval_end = st.get("retrieval_end", 0)
@@ -188,19 +173,30 @@ def track_provenance_experiment(experiment_name: str, prospective_params: Dict[s
 
                     mlflow.log_metric("retrieval_latency_seconds", retrieval_latency)
                     mlflow.log_metric("llm_latency_seconds", llm_latency)
-
                     mlflow.log_metric("nodes_retrieved", sum(e["nodes_count"] for e in retrospect_data["retrieval_events"]))
 
                     if retrospect_data["llm_events"]:
                         usage = retrospect_data["llm_events"][0].get("token_usage", {})
                         mlflow.log_metric("total_tokens", usage.get("total_tokens", 0))
 
-                    # Scores
                     all_scores = [n["score"] for ev in retrospect_data["retrieval_events"] for n in ev["nodes"] if n.get("score")]
                     if all_scores:
                         mlflow.log_metric("avg_retrieval_score", sum(all_scores) / len(all_scores))
 
-                    # Artefato JSON
+                    is_noworkflow_run = os.environ.get("RUN_MODE") == "noworkflow"
+                    if noworkflow_trial_id is None and NOWORKFLOW_AVAILABLE and is_noworkflow_run:
+                        try:
+                            import sqlite3
+                            now_db = os.path.join(".noworkflow", "db.sqlite")
+                            if os.path.exists(now_db):
+                                conn = sqlite3.connect(now_db)
+                                row = conn.execute("SELECT id FROM trial ORDER BY start DESC LIMIT 1").fetchone()
+                                conn.close()
+                                if row:
+                                    noworkflow_trial_id = str(row[0])
+                                    mlflow.set_tag("noworkflow_trial_id", noworkflow_trial_id)
+                        except Exception: pass
+
                     run_log = {
                         "experiment": experiment_name,
                         "mlflow_run_id": ml_run.info.run_id,
@@ -218,30 +214,16 @@ def track_provenance_experiment(experiment_name: str, prospective_params: Dict[s
                     }
 
                     os.makedirs("data/provenance_logs", exist_ok=True)
-                    log_filename = f"data/provenance_logs/trial_{noworkflow_trial_id or ml_run.info.run_id[:8]}_{int(time.time())}.json"
+                    file_id = noworkflow_trial_id if noworkflow_trial_id else ml_run.info.run_id[:8]
+                    log_filename = f"data/provenance_logs/trial_{file_id}_{int(time.time())}.json"
+                    
                     with open(log_filename, "w", encoding="utf-8") as f:
                         json.dump(run_log, f, indent=4, ensure_ascii=False, default=str)
 
-                    # Fallback SQLite noworkflow
-                    if noworkflow_trial_id is None and NOWORKFLOW_AVAILABLE:
-                        try:
-                            import sqlite3
-                            now_db = os.path.join(".noworkflow", "db.sqlite")
-                            if os.path.exists(now_db):
-                                conn = sqlite3.connect(now_db)
-                                row = conn.execute("SELECT id FROM trial ORDER BY start DESC LIMIT 1").fetchone()
-                                conn.close()
-                                if row:
-                                    noworkflow_trial_id = row[0]
-                                    mlflow.set_tag("noworkflow_trial_id", str(noworkflow_trial_id))
-                        except Exception: pass
-
                     mlflow.log_artifact(log_filename)
-
-                    try:
-                        Settings.callback_manager.remove_handler(handler)
+                    
+                    try: Settings.callback_manager.remove_handler(handler)
                     except Exception: pass
-
                 return result
         return wrapper
     return decorator
